@@ -1,0 +1,13 @@
+{
+    "extends": "./jsconfig-base.json",
+    "compilerOptions": {
+        "module": "esnext",
+        "target": "esnext",
+        "outDir": "dist/esm",
+        "allowJs": true,
+        "checkJs": true
+    },
+    "exclude": [
+        "node_modules"
+    ]
+}
