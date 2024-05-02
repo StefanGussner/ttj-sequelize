@@ -49,22 +49,28 @@ export class TTJView {
         return tableName;
     }
 
-    addOperatorsToQuery(query) {
+    fixQuery(query) {
         if (typeof query !== 'object') {
             return query;
         }
         if (Array.isArray(query)) {
-            query = query.map(e => this.addOperatorsToQuery(e));
+            query = query.map(e => this.fixQuery(e));
         }
         const sequelizeKeyRegex = /^\$(.*)/;
+        if (Object.keys(query).length === 0) {
+            return null;
+        }
         for (const key in query) {
             const opKeys = Object.keys(Op);
             if (sequelizeKeyRegex.test(key) && opKeys.includes(key.match(sequelizeKeyRegex)[1])) {
                 const value = query[key];
                 delete query[key];
-                query[Op[key.match(sequelizeKeyRegex)[1]]] = this.addOperatorsToQuery(value);
+                query[Op[key.match(sequelizeKeyRegex)[1]]] = this.fixQuery(value);
             } else {
-                query[key] = this.addOperatorsToQuery(query[key]);
+                query[key] = this.fixQuery(query[key]);
+            }
+            if (query[key] === null) {
+                delete query[key];
             }
         }
         return query;
@@ -128,17 +134,17 @@ export class TTJView {
 
     /**
      * 
-     * @param {{table:string, queryObject:any}[]} query 
+     * @param {{table:string, sequelizeQuery:any}[]} query 
      */
     async executeQuery(query) {
         const results = [];
-        for (const { table, sequelize_query_object } of query) {
+        for (const { table, sequelizeQuery } of query) {
             const Table = this.tables.find(t => this.getTableName(t) === table);
             if (!Table) {
                 throw new Error(`Table ${table} not found`);
             }
-            const sequelizeQuery = this.addOperatorsToQuery(sequelize_query_object);
-            const result = { table, results: (await Table.findAll({ where: sequelizeQuery, limit: 10, include: [{ all: true }] })).map(r => r.toJSON()) };
+            const sequelizeWhereQuery = this.fixQuery(sequelizeQuery);
+            const result = { table, results: (await Table.findAll({ where: sequelizeWhereQuery, limit: 10, include: [{ all: true }] })).map(r => r.toJSON()) };
             results.push(result);
         }
         return results;
