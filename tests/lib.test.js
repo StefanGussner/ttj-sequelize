@@ -44,19 +44,28 @@ test('serializes all data types', async () => {
 });
 
 test('temp test', async () => {
-    expect.assertions(2);
+    expect.assertions(4);
     const dbFactory = new DbFactory(new Sequelize('sqlite::memory'));
     const Customer = await dbFactory.getCustomer();
     const CustomerOffer = await dbFactory.getCustomerOffer();
-    const newoffer = CustomerOffer.build({
-        offerDate: new Date(),
-        offerSum: 1000
+    const newCustomer = Customer.build({
+        legalName: 'Test',
+        taxId: '123456',
+        anualTurnover: 1000
     });
-    await newoffer.save();
+    await newCustomer.save();
+    const newOffer = CustomerOffer.build({
+        offerDate: new Date(),
+        offerSum: 1000,
+        CustomerId: newCustomer.id
+    });
+    await newOffer.save();
     const view = new TTJView([Customer, CustomerOffer], process.env.TTJ_API_TOKEN);
-    const results = await view.ask('find me all customer offers with an offer sum over 100');
-    expect(results[0]).toHaveLength(1);
+    const results = await view.ask('find me all customer offers with an offer sum over 100 and their customers');
+    expect(results[0].table).toBe('CustomerOffers');
+    expect(results[0].results).toHaveLength(1);
     const secondResults = await view.ask('find me all customer offers with an offer sum over 1000');
-    expect(secondResults[0]).toHaveLength(0);
+    expect(secondResults[0].table).toBe('CustomerOffers');
+    expect(secondResults[0].results).toHaveLength(0);
 }, 120000);
 

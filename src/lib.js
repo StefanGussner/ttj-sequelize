@@ -138,7 +138,7 @@ export class TTJView {
                 throw new Error(`Table ${table} not found`);
             }
             const sequelizeQuery = this.addOperatorsToQuery(sequelize_query_object);
-            const result = (await Table.findAll({ where: sequelizeQuery, limit: 10, include: [{ all: true }] })).map(r => r.toJSON());
+            const result = { table, results: (await Table.findAll({ where: sequelizeQuery, limit: 10, include: [{ all: true }] })).map(r => r.toJSON()) };
             results.push(result);
         }
         return results;
