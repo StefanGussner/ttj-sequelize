@@ -2,11 +2,11 @@ import { DataTypes, Model, Op } from 'sequelize';
 import { fetchRetry } from './helper';
 export class TTJView {
     /** 
-     * @param {typeof import('sequelize').Model[]} tables the tables accessible for the user to serach
+     * @param {import('sequelize').ModelStatic<any>[]} tables the tables accessible for the user to serach
      * @param {string} apiKey the API key for the text-to-json.com API
      **/
     constructor(tables, apiKey) {
-        /** @type {typeof import('sequelize').Model[]} */
+        /** @type {import('sequelize').ModelStatic<any>[]} */
         this.tables = tables;
         this.apiKey = apiKey;
 
@@ -165,10 +165,14 @@ export class TTJView {
                     type: this.mapTypes(attr.type),
                 };
                 if (attr.references) {
-                    serializedAttr.references = {
-                        table: attr.references.model,
-                        key: attr.references.key
-                    };
+                    if (typeof attr.references === 'object') {
+                        serializedAttr.references = {
+                            table: attr.references.model,
+                            key: attr.references.key
+                        };
+                    } else {
+                        throw new Error(`Unsupported reference type: ${attr.references}`);
+                    }
                 }
                 serializedAttributes.push(serializedAttr);
             }
