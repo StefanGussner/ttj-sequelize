@@ -115,7 +115,7 @@ export class TTJView {
             throw new Error(`Invalid response: ${JSON.stringify(response)}`);
         }
         return response.response;
-    }//
+    }
 
     /**
      * 
@@ -157,6 +157,7 @@ export class TTJView {
     /**
      * 
      * @param {{table:string, sequelizeQuery:any}[]} query 
+     * @returns {Promise<{table:string, results:any[]}[]>}
      */
     async executeQuery(query) {
         const results = [];
