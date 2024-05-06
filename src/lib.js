@@ -93,7 +93,24 @@ export class TTJView {
         const queryResult = await this.executeQuery(response.query);
         return queryResult;
 
-    }
+    /**
+     * 
+     * @param {any} context the database results to generate the RAG report from
+     * @param {string} question the question that was asked
+     */
+    async ragQuestion(context, question) {
+        const response = await fetchRetry(`https://text-to-json.com/api/v1/ragQuestion?apiToken=${this.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ question, context: context }),
+        }).then(r => r.json());
+        if (typeof response !== 'object' || !('response' in response)) {
+            throw new Error(`Invalid response: ${JSON.stringify(response)}`);
+        }
+        return response.response;
+    }//
 
     /**
      * 
