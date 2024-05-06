@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 import DbFactory from './testmodels/db-factory';
-import { Sequelize } from 'sequelize';
+import { Sequelize, Op } from 'sequelize';
 import { TTJView } from '../src/lib';
 
 test('serializes relations', async () => {
@@ -43,7 +43,7 @@ test('serializes all data types', async () => {
     });
 });
 
-test('temp test', async () => {
+test('basic ask works', async () => {
     expect.assertions(4);
     const dbFactory = new DbFactory(new Sequelize('sqlite::memory'));
     const Customer = await dbFactory.getCustomer();
@@ -62,10 +62,36 @@ test('temp test', async () => {
     await newOffer.save();
     const view = new TTJView([Customer, CustomerOffer], process.env.TTJ_API_TOKEN);
     const results = await view.ask('find me all customer offers with an offer sum over 100 and their customers');
-    expect(results[0].table).toBe('CustomerOffers');
-    expect(results[0].results).toHaveLength(1);
+    expect(results.queryResult[0].table).toBe('CustomerOffers');
+    expect(results.queryResult[0].results).toHaveLength(1);
     const secondResults = await view.ask('find me all customer offers with an offer sum over 1000');
-    expect(secondResults[0].table).toBe('CustomerOffers');
-    expect(secondResults[0].results).toHaveLength(0);
-}, 120000);
+    expect(secondResults.queryResult[0].table).toBe('CustomerOffers');
+    expect(secondResults.queryResult[0].results).toHaveLength(0);
+}, 120_000);
 
+test('ask respects filters', async () => {
+    expect.assertions(4);
+    const dbFactory = new DbFactory(new Sequelize('sqlite::memory'));
+    const Customer = await dbFactory.getCustomer();
+    const CustomerOffer = await dbFactory.getCustomerOffer();
+    const newCustomer = Customer.build({
+        legalName: 'Test',
+        taxId: '123456',
+        anualTurnover: 1000
+    });
+    await newCustomer.save();
+    const newOffer = CustomerOffer.build({
+        offerDate: new Date(),
+        offerSum: 1000,
+        CustomerId: newCustomer.id
+    });
+    await newOffer.save();
+    const view = new TTJView([Customer, CustomerOffer], process.env.TTJ_API_TOKEN);
+    const results = await view.ask('find me all customer offers with an offer sum over 100 and their customers');
+    expect(results.queryResult[0].table).toBe('CustomerOffers');
+    expect(results.queryResult[0].results).toHaveLength(1);
+    view.setTableFilter('CustomerOffers', { offerDate: { [Op.lt]: new Date(new Date().getTime() - (24 * 60 * 60 * 1000)) } });
+    const secondResults = await view.ask('find me all customer offers with an offer sum over 100 and their customers');
+    expect(secondResults.queryResult[0].table).toBe('CustomerOffers');
+    expect(secondResults.queryResult[0].results).toHaveLength(0);
+}, 240_000);

@@ -2,13 +2,40 @@ import { DataTypes, Model, Op } from 'sequelize';
 import { fetchRetry } from './helper';
 export class TTJView {
     /** 
-     * @param {typeof import('sequelize').Model[]} tables
-     * @param {string} apiKey
+     * @param {typeof import('sequelize').Model[]} tables the tables accessible for the user to serach
+     * @param {string} apiKey the API key for the text-to-json.com API
      **/
     constructor(tables, apiKey) {
         /** @type {typeof import('sequelize').Model[]} */
         this.tables = tables;
         this.apiKey = apiKey;
+
+
+
+        /** @type {Map<string,import('sequelize').ModelStatic<any>>} */
+        this.tableFilters = new Map();
+    }
+
+    /**
+     * Set/overwrite the filter for a table.
+     * A this filter will apply to all queries made to the table
+     * 
+     * @template {typeof import('sequelize').Model} M
+     * 
+     * @param {M|string} table 
+     * @param {import('sequelize').ModelStatic<InstanceType<M>>} filter 
+     */
+    setTableFilter(table, filter) {
+        let referencedTable;
+        if (typeof table === 'string') {
+            referencedTable = this.tables.find(t => this.getTableName(t) === table);
+        } else {
+            referencedTable = this.tables.find(t => t === table);
+        }
+        if (!referencedTable) {
+            throw new Error(`Table ${table} not found`);
+        }
+        this.tableFilters.set(this.getTableName(referencedTable), filter);
     }
 
     /**
@@ -166,7 +193,10 @@ export class TTJView {
             if (!Table) {
                 throw new Error(`Table ${table} not found`);
             }
-            const sequelizeWhereQuery = this.fixQuery(sequelizeQuery);
+            let sequelizeWhereQuery = this.fixQuery(sequelizeQuery);
+            if (this.tableFilters.has(this.getTableName(Table))) {
+                sequelizeWhereQuery = { [Op.and]: [sequelizeWhereQuery, this.tableFilters.get(this.getTableName(Table))] };
+            }
             const result = { table, results: (await Table.findAll({ where: sequelizeWhereQuery, limit: 10, include: [{ all: true }] })).map(r => r.toJSON()) };
             results.push(result);
         }
