@@ -90,8 +90,13 @@ export class TTJView {
             },
             body: JSON.stringify({ question, tables }),
         }).then(r => r.json());
+        if (typeof response !== 'object' || !('query' in response) || !Array.isArray(response.query)) {
+            throw new Error(`Invalid response: ${JSON.stringify(response)}`);
+        }
         const queryResult = await this.executeQuery(response.query);
-        return queryResult;
+        const ragAnswer = await this.ragQuestion(queryResult, question);
+        return { answer: ragAnswer, queryResult };
+    }
 
     /**
      * 
